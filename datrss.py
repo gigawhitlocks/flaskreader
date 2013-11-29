@@ -19,8 +19,23 @@ SECRET_KEY = 'development key'
 USERNAME = 'admin'
 PASSWORD = 'default'
 
+newsfeeds = [
+    ('Top Headlines', 'http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305'),
+    ('World', 'http://hosted2.ap.org/atom/APDEFAULT/cae69a7523db45408eeb2b3a98c0c9c5'),
+    ('US National', 'http://hosted2.ap.org/atom/APDEFAULT/386c25518f464186bf7a2ac026580ce7'),
+    ('Politics', 'http://hosted2.ap.org/atom/APDEFAULT/89ae8247abe8493fae24405546e9a1aa'),
+    ('Business', 'http://hosted2.ap.org/atom/APDEFAULT/f70471f764144b2fab526d39972d37b3'),
+    ('Technology', 'http://hosted2.ap.org/atom/APDEFAULT/495d344a0d10421e9baa8ee77029cfbd'),
+    ('Sports', 'http://hosted2.ap.org/atom/APDEFAULT/347875155d53465d95cec892aeb06419'),
+    ('Health', 'http://hosted2.ap.org/atom/APDEFAULT/bbd825583c8542898e6fa7d440b9febc'),
+    ('Science', 'http://hosted2.ap.org/atom/APDEFAULT/b2f0ca3a594644ee9e50a8ec4ce2d6de'),
+    ('Strange', 'http://hosted2.ap.org/atom/APDEFAULT/aa9398e6757a46fa93ed5dea7bd3729e')
+]
+
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.config.from_object(__name__)
+app.current_feed_dicts = []
+
 class CustomJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, time.struct_time):
@@ -45,30 +60,37 @@ def root():
     'summary': summary
     'href': url
     }"""
-    entries = []
-    for entry_dict in current_feed_dict['entries']:
-        entry = { 'headline': entry_dict['title'],
-                  'summary': entry_dict['summary'],
-                  'href': entry_dict['link'],
-                  'date': "{}/{}/{} {}:{}:{}".format(entry_dict['published_parsed'].tm_mon,
-                                                     entry_dict['published_parsed'].tm_mday,
-                                                     entry_dict['published_parsed'].tm_year,
-                                                     entry_dict['published_parsed'].tm_hour,
-                                                     entry_dict['published_parsed'].tm_min,
-                                                     entry_dict['published_parsed'].tm_sec)}
-        entries.append(entry)
 
-    return render_template('index.html', stories=entries)
+    content = {}
+    for current_feed in app.current_feed_dicts:
+        entries = []
+        for entry_dict in current_feed[1]['entries']:
+            entry = { 'headline': entry_dict['title'],
+                      'summary': entry_dict['summary'],
+                      'href': entry_dict['link'],
+                      'date': "{}/{}/{} {}:{}:{}".format(entry_dict['published_parsed'].tm_mon,
+                                                         entry_dict['published_parsed'].tm_mday,
+                                                         entry_dict['published_parsed'].tm_year,
+                                                         entry_dict['published_parsed'].tm_hour,
+                                                         entry_dict['published_parsed'].tm_min,
+                                                         entry_dict['published_parsed'].tm_sec)}
+            entries.append(entry)
+
+        content[current_feed[0]] = entries
+
+    return render_template('index.html', stories=content)
 
 @app.route('/json/', methods=['GET', 'POST'])
 def json_root():
-    return jsonify(current_feed_dict)
+    return jsonify(app.current_feed_dicts)
 
 def update_news():
-    global current_feed_dict
+    new_feed_dicts = []
     while True:
-        current_feed_dict = feedparser.parse('http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305')
+        for newsfeed in newsfeeds:
+            new_feed_dicts.append((newsfeed[0], feedparser.parse(newsfeed[1])))
         print "updating news"
+        app.current_feed_dicts = new_feed_dicts
         time.sleep(1800)
 
 if __name__ == "__main__":

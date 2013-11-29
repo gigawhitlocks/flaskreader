@@ -1,9 +1,12 @@
 {% extends "layout.html" %}
 {% block body %}
-{% for story in stories %}
-<h3><a href={{story.href}}>{{ story.headline }}</a></h3>
-<p>{{story.date}}</p>
-<p>{{story.summary}}</p>
-<br />
-{% endfor %}
+  {% for category in stories %}
+    <h2>{{category}}</h2>
+    {% for story in stories[category] %}
+      <h3><a href={{story.href}}>{{ story.headline }}</a></h3>
+      <p>{{story.date}}</p>
+      <p>{{story.summary}}</p>
+      <br />
+    {% endfor %}
+  {% endfor %}
 {% endblock %}
